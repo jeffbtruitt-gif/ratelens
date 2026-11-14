@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RateLens — Daily Interest Rate Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#12284C; --blue:#2563A8; --blue-mid:#3C79B4; --blue-light:#7FA9D4; --blue-pale:#B9D2EA;
+    --area-fill:rgba(133,183,235,.28);
+    --up:#B4462F; --down:#2E9152; --flat:#7C8B96;
+    --bg-app:#F4F6F8; --bg-surface:#fff; --bg-subtle:#FCFDFD; --bg-muted:#F8FAFB;
+    --border:#E4E5E7; --border-strong:#D7DBE0; --border-row:#EEF0F2;
+    --text:#29404E; --text-secondary:#4A5A66; --text-tertiary:#6B7A85; --text-muted:#7C8B96; --text-faint:#8A97A1;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-app);font-family:'Source Sans Pro',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums}
+  a{color:var(--blue);text-decoration:none}
+  .shell{max-width:1280px;margin:0 auto;padding:0 28px}
+  header{background:var(--bg-surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;box-shadow:0 1px 3px rgba(18,40,76,.06)}
+  .hrow{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:16px 0 0}
+  .brand{display:flex;align-items:center;gap:11px}
+  .wordmark{font-size:23px;font-weight:700;letter-spacing:-.01em;line-height:1}
+  .wordmark .a{color:var(--navy)} .wordmark .b{color:var(--blue)}
+  .tagline{font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-top:3px}
+  .hright{margin-left:auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .pill{display:flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:6px;padding:5px 11px;background:var(--bg-muted)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--down);display:block}
+  .pill .lbl{font-size:12px;font-weight:600;color:var(--text-secondary)}
+  .pill .ts{font-size:12px;color:var(--text-muted)}
+  .btn{background:#fff;border:1px solid var(--border);border-radius:6px;padding:5px 11px;font:600 12.5px 'Source Sans Pro';color:var(--text);cursor:pointer}
+  .btn:hover{border-color:var(--blue);color:var(--blue)}
+  .btn.primary{background:var(--navy);border-color:var(--navy);color:#fff;padding:6px 12px}
+  .btn.primary:hover{color:#fff}
+  .alertbtn{position:relative}
+  .badge{position:absolute;top:-7px;right:-7px;background:var(--up);color:#fff;font:700 10px 'Source Sans Pro';border-radius:50%;min-width:15px;height:15px;display:flex;align-items:center;justify-content:center;padding:0 3px}
+  .unread{position:absolute;top:-2px;right:-2px;width:7px;height:7px;border-radius:50%;background:var(--up)}
+  .tabs{display:flex;gap:2px;margin-top:12px;flex-wrap:wrap}
+  .tab{padding:9px 15px 11px;border-bottom:2px solid transparent;font:600 13.5px 'Source Sans Pro';color:var(--text-muted);cursor:pointer;background:none;border-top:none;border-left:none;border-right:none}
+  .tab.active{border-bottom-color:var(--navy);color:var(--navy);font-weight:700}
+  main{padding:24px 0 48px}
+  .card{background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 1px 2px rgba(18,40,76,.04);padding:20px 22px 18px;margin-bottom:18px}
+  .card.home{padding:18px 20px 16px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--navy)}
+  .sec-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px}
+  .badge-num{width:22px;height:22px;background:var(--navy);border-radius:5px;color:#fff;font:700 12px 'Source Sans Pro';display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  h1{font-size:22px;font-weight:700;color:var(--navy);letter-spacing:-.01em;margin:0}
+  h2{font-size:16px;font-weight:700;color:var(--navy);margin:0}
+  .subhead{font-size:13px;font-weight:400;color:var(--text-tertiary);margin-top:2px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:10px;margin:4px 0 16px}
+  .kpi{border:1px solid var(--border);border-radius:8px;padding:11px 13px;background:var(--bg-subtle);cursor:pointer}
+  .kpi:hover{border-color:var(--blue)}
+  .kpi.sel{border-color:var(--navy);box-shadow:inset 0 0 0 1px var(--navy)}
+  .kpi .k-lbl{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)}
+  .kpi .k-val{font-size:25px;font-weight:700;color:var(--navy);margin-top:3px}
+  .kpi.home .k-val{font-size:21px}
+  .kpi .k-chg{font-size:12.5px;font-weight:600;margin-top:1px}
+  .chart-wrap{position:relative;width:100%}
+  .chart-note{font-size:12px;color:var(--text-faint);margin:2px 0 0}
+  .collapse{display:flex;align-items:center;gap:9px;background:var(--navy);border:1px solid var(--navy);color:#fff;padding:10px 14px;margin-top:18px;border-radius:8px;cursor:pointer;user-select:none}
+  .collapse.open{border-radius:8px 8px 0 0}
+  .collapse .caret{font-size:11px}
+  .collapse .c-lbl{font-size:13.5px;font-weight:600}
+  .collapse .c-hint{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.72}
+  .panel{border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:2px 14px 12px;overflow-x:auto}
+  table{border-collapse:collapse;width:100%;min-width:660px}
+  th{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);padding:10px 8px;border-bottom:1px solid var(--border-strong);text-align:right}
+  th:first-child{text-align:left}
+  td{padding:8px;border-bottom:1px solid var(--border-row);text-align:right;font-size:13.5px}
+  td:first-child{text-align:left;color:var(--text-secondary)}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:var(--bg-muted)}
+  tr.sel td{font-weight:700;color:var(--navy)}
+  .chg{font-size:13px;font-weight:600}
+  .chev{color:#A6B1BA;font-size:14px}
+  .rangebar{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end}
+  .rangebar .rv{font-size:11.5px;color:var(--text-muted)}
+  .track{width:96px;height:4px;background:var(--border);border-radius:2px;position:relative}
+  .marker{position:absolute;top:-3px;width:3px;height:10px;background:var(--navy);border-radius:1px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 12px}
+  .chip{border:1px solid var(--border);background:#fff;color:var(--text-secondary);border-radius:6px;padding:3px 10px;font:600 12px 'Source Sans Pro';cursor:pointer;user-select:none}
+  .chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+  .chip:disabled{opacity:.4;cursor:not-allowed}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:12px}
+  .stat{border:1px dashed var(--border-strong);border-radius:8px;padding:9px 12px;background:var(--bg-muted)}
+  .stat .s-lbl{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)}
+  .stat .s-val{font-size:16px;font-weight:700;color:var(--navy);margin-top:3px}
+  .home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+  .home-grid .card{margin-bottom:0}
+  .home-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+  .kpis.home{grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:10px}
+  .notice{border:1px dashed var(--border-strong);border-radius:8px;background:var(--bg-muted);padding:16px 18px;color:var(--text-tertiary);font-size:13px}
+  .notice b{color:var(--navy)}
+  .footnote{font-size:12px;color:var(--text-faint);margin-top:6px}
+  .overlay{position:fixed;inset:0;background:rgba(18,40,76,.18);z-index:40;display:none}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:360px;max-width:88vw;background:#fff;border-left:1px solid var(--border);box-shadow:-6px 0 24px rgba(18,40,76,.12);z-index:41;transform:translateX(100%);transition:transform .18s;display:flex;flex-direction:column}
+  .drawer.open{transform:translateX(0)}
+  .drawer .d-head{display:flex;align-items:center;gap:9px;padding:16px 18px;border-bottom:1px solid var(--border)}
+  .drawer .d-head h3{margin:0;font-size:15px;font-weight:700;color:var(--navy)}
+  .cbadge{background:var(--up);color:#fff;font:700 10px 'Source Sans Pro';border-radius:9px;padding:1px 7px}
+  .close{margin-left:auto;background:none;border:none;font-size:18px;color:var(--text-muted);cursor:pointer}
+  .d-body{padding:14px 18px;overflow-y:auto;flex:1}
+  .grp{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);margin:12px 0 8px}
+  .acard{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;gap:9px;align-items:flex-start}
+  .acard .glyph{color:var(--up);font-size:12px;margin-top:1px}
+  .acard .t{font-size:13px;font-weight:600;color:var(--text)}
+  .acard .m{font-size:11.5px;color:var(--text-muted);margin-top:2px}
+  .loading{padding:60px 0;text-align:center;color:var(--text-muted);font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <div class="shell">
+    <div class="hrow">
+      <div class="brand">
+        <svg width="38" height="38" viewBox="0 0 48 48" aria-label="RateLens">
+          <rect x="4" y="30" width="7" height="14" rx="1" fill="#12284C"/>
+          <rect x="15" y="22" width="7" height="22" rx="1" fill="#1E3A63"/>
+          <rect x="26" y="26" width="7" height="18" rx="1" fill="#2563A8"/>
+          <rect x="37" y="16" width="7" height="28" rx="1" fill="#12284C"/>
+          <path d="M6 34 L20 24 L28 30 L44 10" fill="none" stroke="#2E9152" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M36 9 L45 8 L44 17 Z" fill="#2E9152"/>
+        </svg>
+        <div>
+          <div class="wordmark"><span class="a">Rate</span><span class="b">Lens</span></div>
+          <div class="tagline">Real rates. Clear perspective.</div>
+        </div>
+      </div>
+      <div class="hright">
+        <div class="pill"><span class="dot"></span><span class="lbl">Sources current</span><span class="ts num" id="stamp"></span></div>
+        <button class="btn alertbtn" id="alertBtn" onclick="openAlerts()">
+          <span class="unread" id="unread"></span>Alerts <span class="cbadge" id="alertCount">0</span>
+        </button>
+      </div>
+    </div>
+    <div class="tabs" id="tabs"></div>
+  </div>
+</header>
+
+<main class="shell" id="main"><div class="loading">Loading rates from your warehouse…</div></main>
+
+<div class="overlay" id="overlay" onclick="closeAlerts()"></div>
+<aside class="drawer" id="drawer">
+  <div class="d-head"><h3>Alerts</h3><span class="cbadge" id="drawerCount">0</span><button class="close" onclick="closeAlerts()">×</button></div>
+  <div class="d-body" id="drawerBody"></div>
+</aside>
+
+<script>
+/* ============================ CONFIG ============================ */
+const SUPABASE_URL = 'https://kdelwwnpuuvgnamumhec.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_nlCjk_1qJDnnh4YHF2YwEw_RK2FiOlV';
+const REST = SUPABASE_URL + '/rest/v1';
+
+const FAMILIES = {
+  treasury: {
+    name:'US Treasury', kind:'curve',
+    source:'U.S. Treasury H.15 · constant maturity par yields',
+    footnote:'Source: U.S. Department of the Treasury daily par yield curve. Changes shown in basis points.',
+    kpiKeys:['1m','3m','1y','2y','5y','10y','20y','30y'],
+    defaultTenor:'10y',
+    tenors:[
+      ['1m','1 Month','1m','UST_PAR_1MO'],
+      ['3m','3 Month','3m','UST_PAR_3MO'],
+      ['6m','6 Month','6m','UST_PAR_6MO'],
+      ['1y','1 Year','1y','UST_PAR_1Y'],
+      ['2y','2 Year','2y','UST_PAR_2Y'],
+      ['3y','3 Year','3y','UST_PAR_3Y'],
+      ['5y','5 Year','5y','UST_PAR_5Y'],
+      ['7y','7 Year','7y','UST_PAR_7Y'],
+      ['10y','10 Year','10y','UST_PAR_10Y'],
+      ['20y','20 Year','20y','UST_PAR_20Y'],
+      ['30y','30 Year','30y','UST_PAR_30Y'],
+    ],
+    alerts:['UST 30yr above 5.30% threshold','2s10s wider than 30bp']
+  },
+  prime: {
+    name:'Prime', kind:'levels', stepped:true,
+    source:'Bank prime loan rate · FOMC target · IORB',
+    footnote:'Prime and IORB from the Federal Reserve H.15; fed funds is the FOMC target range upper bound.',
+    defaultTenor:'prime',
+    tenors:[
+      ['prime','Prime Rate','Prime','PRIME'],
+      ['ff','Fed Funds (upper)','FF','FED_FUNDS_TARGET_UPPER'],
+      ['iorb','IORB','IORB','IORB'],
+    ],
+    alerts:['Prime changes by any amount']
+  },
+  mortgage: {
+    name:'Mortgage', kind:'levels',
+    source:'Freddie Mac PMMS · weekly, Thursdays',
+    footnote:'Source: Freddie Mac Primary Mortgage Market Survey (weekly averages), via FRED.',
+    defaultTenor:'30y',
+    tenors:[
+      ['30y','30yr Fixed','30yr','MORTGAGE_30Y_FRM'],
+      ['15y','15yr Fixed','15yr','MORTGAGE_15Y_FRM'],
+    ],
+    alerts:['30yr PMMS above 6.75%']
+  }
+};
+
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const NAVY='#12284C',MID='#3C79B4',LIGHT='#7FA9D4',PALE='#B9D2EA',UP='#B4462F',DOWN='#2E9152',FLAT='#7C8B96';
+const FONT="'Source Sans Pro', sans-serif";
+
+/* ============================ DATA LAYER ============================ */
+async function getJSON(path){
+  const r = await fetch(REST+path,{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY}});
+  if(!r.ok) throw new Error(path+' → '+r.status);
+  return r.json();
+}
+async function pullObs(ids){
+  const out=[]; const size=1000; let from=0;
+  const inlist='('+ids.join(',')+')';
+  while(true){
+    const rows=await getJSON(`/rate_observations?series_id=in.${inlist}&select=series_id,obs_date,rate&order=obs_date.asc&limit=${size}&offset=${from}`);
+    out.push(...rows);
+    if(rows.length<size) break;
+    from+=size;
+  }
+  return out;
+}
+
+const state={ tab:'home', fam:{}, alertsRead:false };
+let DATA={dateAxis:[],dates:[],byId:{}}; // populated by boot(); never null so render can't crash
+
+function pctOrDash(v){ return v==null?'—':v.toFixed(2)+'%'; }
+function bpTxt(v){ if(v==null) return '—'; const a=Math.abs(v); return (v>0?'▲'+a:v<0?'▼'+a:'0')+'bp'; }
+function bpColor(v){ return v==null?FLAT:v>0?UP:v<0?DOWN:FLAT; }
+function fmtRow(d){ return d.getDate()+' '+MON[d.getMonth()]+' '+d.getFullYear(); }
+function fmtShort(d){ return d.getDate()+' '+MON[d.getMonth()]; }
+
+function shapeData(rows){
+  const dateSet=new Set(), perId={};
+  for(const r of rows){ dateSet.add(r.obs_date); (perId[r.series_id]=perId[r.series_id]||{})[r.obs_date]=+r.rate; }
+  const dates=[...dateSet].sort();
+  const dateAxis=dates.map(s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);});
+  const byId={};
+  for(const id in perId){
+    const map=perId[id]; let last=null; const arr=dates.map(ds=>{ if(map[ds]!=null) last=map[ds]; return map[ds]!=null?map[ds]:last; });
+    byId[id]=arr;
+  }
+  return {dateAxis,dates,byId};
+}
+
+function metrics(id){
+  const arr=DATA.byId[id]; if(!arr) return null;
+  let idx=arr.length-1; while(idx>=0&&arr[idx]==null) idx--;
+  if(idx<0) return null;
+  const latest=arr[idx];
+  const back=n=> (idx-n>=0 && arr[idx-n]!=null)? arr[idx-n]:null;
+  const bp=(a,b)=> (a==null||b==null)?null:Math.round((a-b)*100);
+  let yeIdx=-1; const yr=DATA.dateAxis[idx].getFullYear(); for(let i=0;i<=idx;i++){ if(DATA.dateAxis[i].getFullYear()<yr) yeIdx=i; }
+  const window=arr.slice(Math.max(0,idx-251),idx+1).filter(v=>v!=null);
+  const lo=window.length?Math.min(...window):null, hi=window.length?Math.max(...window):null;
+  return {
+    latest, idx,
+    d1:bp(latest,back(1)), d7:bp(latest,back(5)), d30:bp(latest,back(21)),
+    ytd: yeIdx>=0?bp(latest,arr[yeIdx]):null,
+    lo52:lo, hi52:hi,
+    asOf:DATA.dateAxis[idx]
+  };
+}
+
+/* ============================ RENDER ============================ */
+function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
+
+function renderTabs(){
+  const tabs=[['home','Home'],['treasury','US Treasury'],['prime','Prime'],['mortgage','Mortgage']];
+  document.getElementById('tabs').innerHTML=tabs.map(([id,l])=>
+    `<button class="tab ${state.tab===id?'active':''}" onclick="setTab('${id}')">${l}</button>`).join('');
+}
+function setTab(id){ state.tab=id; renderTabs(); render(); window.scrollTo(0,0); }
+
+function famState(id){ return state.fam[id]||(state.fam[id]={selectedTenor:FAMILIES[id].defaultTenor,curveDates:[0],range:'Max',expanded:{daily:false,curve:false,hist:false},matrixExpanded:false,matrixFreq:'Daily'}); }
+
+function hasData(id){ return !!DATA && FAMILIES[id].tenors.some(t=>DATA.byId[t[3]]); }
+
+function render(){
+  const main=document.getElementById('main');
+  if(!DATA) DATA={dateAxis:[],dates:[],byId:{}};
+  main.innerHTML='';
+  if(state.tab==='home'){ main.append(renderHome()); return; }
+  main.append(renderFamily(state.tab));
+  requestAnimationFrame(drawPending);
+}
+
+function renderHome(){
+  const wrap=el('<div></div>');
+  const grid=el('<div class="home-grid"></div>');
+  for(const id of ['treasury','prime','mortgage']){
+    const f=FAMILIES[id];
+    const card=el('<div class="card home"></div>');
+    card.append(el(`<div class="home-head"><div class="eyebrow">${f.name}</div><button class="btn" onclick="setTab('${id}')">Open tab →</button></div>`));
+    if(hasData(id)){
+      const keys=f.kpiKeys||f.tenors.map(t=>t[0]);
+      const grid2=el('<div class="kpis home"></div>');
+      for(const k of keys){
+        const t=f.tenors.find(x=>x[0]===k); if(!t) continue; const m=metrics(t[3]); if(!m) continue;
+        grid2.append(el(`<div class="kpi home"><div class="k-lbl">${t[2]}</div><div class="k-val num">${pctOrDash(m.latest)}</div></div>`));
+      }
+      card.append(grid2);
+      const asof=firstAsOf(id);
+      card.append(el(`<div class="footnote">${f.source}${asof?' · as of '+fmtRow(asof):''}</div>`));
+    } else {
+      card.append(el(`<div class="notice">Collecting — run the <b>backfill</b> to populate this family.</div>`));
+    }
+    grid.append(card);
+  }
+  wrap.append(grid);
+  return wrap;
+}
+function firstAsOf(id){ for(const t of FAMILIES[id].tenors){ const m=metrics(t[3]); if(m) return m.asOf; } return null; }
+
+let pending=[];
+function renderFamily(id){
+  pending=[];
+  const f=FAMILIES[id];
+  const wrap=el('<div></div>');
+  if(!hasData(id)){
+    const c=el('<div class="card"></div>');
+    c.append(el(`<div class="sec-head"><div><h1>${f.name}</h1><div class="subhead">${f.source}</div></div></div>`));
+    c.append(el(`<div class="notice">No observations yet for this family. Once the backfill runs, this tab populates automatically.</div>`));
+    c.append(el(`<div class="footnote">${f.footnote}</div>`));
+    wrap.append(c); return wrap;
+  }
+  wrap.append(renderDaily(id));
+  if(f.kind==='curve') wrap.append(renderCurve(id));
+  wrap.append(renderHistory(id));
+  const fn=el('<div class="card"></div>'); fn.style.padding='14px 22px';
+  fn.append(el(`<div class="footnote">${f.footnote}</div>`));
+  wrap.append(fn);
+  return wrap;
+}
+
+function renderDaily(id){
+  const f=FAMILIES[id]; const fs=famState(id);
+  const c=el('<div class="card"></div>');
+  c.append(el(`<div class="sec-head"><div class="badge-num">1</div><div><h2>${f.name} — daily rates</h2><div class="subhead">${f.source}</div></div></div>`));
+  const keys=f.kpiKeys||f.tenors.map(t=>t[0]);
+  const kg=el('<div class="kpis"></div>');
+  for(const k of keys){
+    const t=f.tenors.find(x=>x[0]===k); if(!t) continue; const m=metrics(t[3]); if(!m) continue;
+    const tile=el(`<div class="kpi ${fs.selectedTenor===k?'sel':''}">
+      <div class="k-lbl">${t[2]}</div><div class="k-val num">${pctOrDash(m.latest)}</div>
+      <div class="k-chg num" style="color:${bpColor(m.d1)}">${bpTxt(m.d1)}</div></div>`);
+    tile.onclick=()=>{ fs.selectedTenor=k; render(); };
+    kg.append(tile);
+  }
+  c.append(kg);
+  const note = f.kind==='curve' ? 'Today drawn darkest; each earlier date lighter' : 'Recent levels';
+  c.append(el(`<div class="chart-wrap" style="height:190px"><canvas id="c-${id}-daily"></canvas></div><div class="chart-note">${note}</div>`));
+  pending.push(()=> f.kind==='curve'? drawCurveChart(id,`c-${id}-daily`,[0,1,5,21]) : drawLevelsChart(id,`c-${id}-daily`));
+  const bar=el(`<div class="collapse ${fs.expanded.daily?'open':''}"><span class="caret">${fs.expanded.daily?'▼':'▶'}</span><span class="c-lbl">All tenors — 1D / 1W / 1M / YTD / 52-week range</span><span class="c-hint">${f.tenors.length} tenors</span></div>`);
+  bar.onclick=()=>{ fs.expanded.daily=!fs.expanded.daily; render(); };
+  c.append(bar);
+  if(fs.expanded.daily){
+    const panel=el('<div class="panel"></div>');
+    let rows='';
+    for(const t of f.tenors){
+      const m=metrics(t[3]); if(!m) continue;
+      const pctile=(m.lo52!=null&&m.hi52!=null&&m.hi52>m.lo52)?((m.latest-m.lo52)/(m.hi52-m.lo52)*100):50;
+      rows+=`<tr class="${fs.selectedTenor===t[0]?'sel':''}" onclick="pickTenor('${id}','${t[0]}')">
+        <td>${t[1]}</td>
+        <td class="num">${pctOrDash(m.latest)}</td>
+        <td class="chg num" style="color:${bpColor(m.d1)}">${bpTxt(m.d1)}</td>
+        <td class="chg num" style="color:${bpColor(m.d7)}">${bpTxt(m.d7)}</td>
+        <td class="chg num" style="color:${bpColor(m.d30)}">${bpTxt(m.d30)}</td>
+        <td class="chg num" style="color:${bpColor(m.ytd)}">${bpTxt(m.ytd)}</td>
+        <td><div class="rangebar"><span class="rv num">${m.lo52!=null?m.lo52.toFixed(2):'—'}</span><span class="track"><span class="marker" style="left:${Math.max(0,Math.min(96,pctile/100*96)).toFixed(0)}px"></span></span><span class="rv num">${m.hi52!=null?m.hi52.toFixed(2):'—'}</span></div></td>
+        <td class="chev">›</td></tr>`;
+    }
+    panel.append(el(`<table><thead><tr><th>Tenor</th><th>Latest</th><th>1D</th><th>1W</th><th>1M</th><th>YTD</th><th>52-week range</th><th></th></tr></thead><tbody>${rows}</tbody></table>`));
+    c.append(panel);
+  }
+  return c;
+}
+function pickTenor(id,k){ famState(id).selectedTenor=k; render(); }
+
+const DATE_PRESETS=[['Today',0],['Yesterday',1],['1 week ago',5],['1 month ago',21],['3 months ago',63],['6 months ago',126]];
+const SHADES=['#12284C','#2563A8','#3C79B4','#7FA9D4','#B9D2EA'];
+function renderCurve(id){
+  const f=FAMILIES[id]; const fs=famState(id);
+  const c=el('<div class="card"></div>');
+  c.append(el(`<div class="sec-head"><div class="badge-num">2</div><div><h2>Interest rate curve</h2><div class="subhead">Pick one or more dates; each selected date draws its curve</div></div></div>`));
+  const maxIdx=DATA.dateAxis.length-1;
+  const chipRow=el('<div class="chips"></div>');
+  for(const [lbl,off] of DATE_PRESETS){
+    const avail=maxIdx-off>=0;
+    const on=fs.curveDates.includes(off);
+    const chip=el(`<button class="chip ${on?'on':''}" ${avail?'':'disabled'}>${lbl}</button>`);
+    if(avail) chip.onclick=()=>{ const i=fs.curveDates.indexOf(off); if(i>=0){ if(fs.curveDates.length>1) fs.curveDates.splice(i,1);} else fs.curveDates.push(off); render(); };
+    chipRow.append(chip);
+  }
+  c.append(chipRow);
+  c.append(el(`<div class="chart-wrap" style="height:262px"><canvas id="c-${id}-curve"></canvas></div>`));
+  pending.push(()=>drawCurveChart(id,`c-${id}-curve`,[...fs.curveDates].sort((a,b)=>b-a)));
+  return c;
+}
+
+function renderHistory(id){
+  const f=FAMILIES[id]; const fs=famState(id);
+  const c=el('<div class="card"></div>');
+  const selT=f.tenors.find(t=>t[0]===fs.selectedTenor)||f.tenors[0];
+  c.append(el(`<div class="sec-head"><div class="badge-num">3</div><div><h2>Historical rates</h2><div class="subhead">${selT[1]} over time</div></div></div>`));
+  const tchips=el('<div class="chips"></div>');
+  for(const t of f.tenors){ if(!DATA.byId[t[3]]) continue;
+    const chip=el(`<button class="chip ${fs.selectedTenor===t[0]?'on':''}">${t[2]}</button>`);
+    chip.onclick=()=>{ fs.selectedTenor=t[0]; render(); }; tchips.append(chip);
+  }
+  c.append(tchips);
+  const rchips=el('<div class="chips"></div>');
+  for(const r of ['1Y','5Y','Max']){ const chip=el(`<button class="chip ${fs.range===r?'on':''}">${r}</button>`); chip.onclick=()=>{fs.range=r;render();}; rchips.append(chip); }
+  c.append(rchips);
+  c.append(el(`<div class="chart-wrap" style="height:262px"><canvas id="c-${id}-hist"></canvas></div>`));
+  pending.push(()=>drawHistChart(id,`c-${id}-hist`));
+  const m=metrics(selT[3]);
+  const win=histWindow(id);
+  const vals=win.vals;
+  if(vals.length){
+    const lo=Math.min(...vals),hi=Math.max(...vals),avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+    const pctile=(hi>lo)?((m.latest-lo)/(hi-lo)*100):50;
+    const stats=el('<div class="stats"></div>');
+    stats.append(el(`<div class="stat"><div class="s-lbl">Range high</div><div class="s-val num">${hi.toFixed(2)}%</div></div>`));
+    stats.append(el(`<div class="stat"><div class="s-lbl">Range low</div><div class="s-val num">${lo.toFixed(2)}%</div></div>`));
+    stats.append(el(`<div class="stat"><div class="s-lbl">Average</div><div class="s-val num">${avg.toFixed(2)}%</div></div>`));
+    stats.append(el(`<div class="stat"><div class="s-lbl">Percentile</div><div class="s-val num">${pctile.toFixed(0)}%</div></div>`));
+    c.append(stats);
+  }
+  c.append(renderMatrix(id));
+  if(DATA.dateAxis.length<40) c.append(el(`<div class="footnote">Showing ${DATA.dateAxis.length} business days — full history appears after the backfill run.</div>`));
+  return c;
+}
+function renderMatrix(id){
+  const f=FAMILIES[id]; const fs=famState(id);
+  const box=el('<div></div>');
+  const bar=el(`<div class="collapse ${fs.matrixExpanded?'open':''}"><span class="caret">${fs.matrixExpanded?'▼':'▶'}</span><span class="c-lbl">Full history — tenors × dates</span><span class="c-hint">${fs.matrixFreq}</span></div>`);
+  bar.onclick=()=>{ fs.matrixExpanded=!fs.matrixExpanded; render(); };
+  box.append(bar);
+  if(fs.matrixExpanded){
+    const panel=el('<div class="panel"></div>');
+    const fchips=el('<div class="chips" style="margin-top:10px"></div>');
+    for(const fr of ['Daily','Weekly','Month-end']){ const chip=el(`<button class="chip ${fs.matrixFreq===fr?'on':''}">${fr}</button>`); chip.onclick=()=>{fs.matrixFreq=fr;render();}; fchips.append(chip); }
+    panel.append(fchips);
+    const m=sampleMatrix(id,fs.matrixFreq);
+    const tenors=m.tenors;
+    const head='<tr><th>Date</th>'+tenors.map(t=>`<th>${t[2]}</th>`).join('')+'</tr>';
+    let body='';
+    for(const r of m.rows){ body+='<tr><td>'+fmtRow(r.date)+'</td>'+r.vals.map(v=>`<td class="num">${v==null?'—':v.toFixed(2)}</td>`).join('')+'</tr>'; }
+    const scroll=el(`<div style="max-height:300px;overflow:auto;border:1px solid var(--border-row);border-radius:6px;margin-top:4px"><table style="min-width:${120+tenors.length*70}px"><thead style="position:sticky;top:0">${head}</thead><tbody>${body}</tbody></table></div>`);
+    scroll.querySelectorAll('th').forEach(th=>{th.style.background='var(--bg-muted)';th.style.padding='7px 10px';});
+    scroll.querySelectorAll('td').forEach(td=>{td.style.padding='7px 10px';td.style.fontSize='13px';});
+    panel.append(scroll);
+    const foot=el('<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px"></div>');
+    const btn=el('<button class="btn">Export CSV</button>'); btn.onclick=()=>exportMatrixCSV(id);
+    foot.append(btn); foot.append(el(`<span class="footnote">${m.rows.length} row${m.rows.length===1?'':'s'}</span>`));
+    panel.append(foot);
+    box.append(panel);
+  }
+  return box;
+}
+function isoWeek(d){ const x=new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate()+3-((x.getDay()+6)%7)); const w1=new Date(x.getFullYear(),0,4); return x.getFullYear()+'-'+(1+Math.round(((x-w1)/86400000-3+((w1.getDay()+6)%7))/7)); }
+function sampleMatrix(id,freq){
+  const f=FAMILIES[id]; const tenors=f.tenors.filter(t=>DATA.byId[t[3]]); const N=DATA.dateAxis.length;
+  let idxs=[]; for(let i=0;i<N;i++) idxs.push(i);
+  if(freq==='Weekly'){ const seen={}; for(const i of idxs){ seen[isoWeek(DATA.dateAxis[i])]=i; } idxs=Object.values(seen); }
+  else if(freq==='Month-end'){ const seen={}; for(const i of idxs){ const d=DATA.dateAxis[i]; seen[d.getFullYear()+'-'+d.getMonth()]=i; } idxs=Object.values(seen); }
+  idxs.sort((a,b)=>a-b); idxs=idxs.slice(-40).reverse();
+  const rows=idxs.map(i=>({date:DATA.dateAxis[i], vals:tenors.map(t=>DATA.byId[t[3]][i])}));
+  return {rows,tenors};
+}
+function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function exportMatrixCSV(id){
+  const fs=famState(id); const m=sampleMatrix(id,fs.matrixFreq); const tenors=m.tenors;
+  let csv='Date,'+tenors.map(t=>t[1]).join(',')+'\n';
+  for(const r of m.rows){ csv+=isoDate(r.date)+','+r.vals.map(v=>v==null?'':v.toFixed(2)).join(',')+'\n'; }
+  const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`ratelens-${id}-${fs.matrixFreq.toLowerCase().replace('-','')}.csv`; a.click(); URL.revokeObjectURL(url);
+}
+function histWindow(id){
+  const fs=famState(id); const t=FAMILIES[id].tenors.find(x=>x[0]===fs.selectedTenor)||FAMILIES[id].tenors[0];
+  const arr=DATA.byId[t[3]]||[]; const N=arr.length;
+  const span={'1Y':252,'5Y':1260,'Max':N}[fs.range]||N;
+  const start=Math.max(0,N-span);
+  const idxs=[]; for(let i=start;i<N;i++) if(arr[i]!=null) idxs.push(i);
+  return {idxs,vals:idxs.map(i=>arr[i]),dates:idxs.map(i=>DATA.dateAxis[i]),tenor:t};
+}
+
+/* ============================ CHARTS ============================ */
+const charts={};
+function axisOpts(fmtFn){ return {grid:{color:'#E4E5E7',lineWidth:1},border:{color:'#29404E',width:1},ticks:{font:{family:FONT,size:11.5,weight:'700'},color:'#29404E',maxRotation:0,autoSkip:true,maxTicksLimit:8,callback:fmtFn}}; }
+function destroyChart(cid){ if(charts[cid]){ charts[cid].destroy(); delete charts[cid]; } }
+function drawPending(){ pending.forEach(fn=>{try{fn();}catch(e){console.warn(e);}}); pending=[]; }
+
+function curveShades(dates){
+  const sorted=[...dates].sort((a,b)=>a-b);
+  const map={}; sorted.forEach((off,i)=>{ map[off]=SHADES[Math.min(i,SHADES.length-1)]; }); return map;
+}
+function drawCurveChart(id,cid,offsets){
+  destroyChart(cid); const cv=document.getElementById(cid); if(!cv||!cv.clientWidth) return;
+  const f=FAMILIES[id]; const maxIdx=DATA.dateAxis.length-1;
+  const tenors=f.tenors.filter(t=>DATA.byId[t[3]]);
+  const labels=tenors.map(t=>t[2]);
+  const shadeMap=curveShades(offsets);
+  const ds=offsets.filter(o=>maxIdx-o>=0).map(off=>{
+    const isToday=off===0; const color=shadeMap[off];
+    const d=DATA.dateAxis[maxIdx-off];
+    return {label: off===0?('Today '+fmtShort(d)):fmtRow(d),
+      data:tenors.map(t=>DATA.byId[t[3]][maxIdx-off]),
+      borderColor:color,backgroundColor:color,borderWidth:isToday?3:2,
+      pointRadius:isToday?3.5:0,pointBackgroundColor:color,tension:.25};
+  });
+  charts[cid]=new Chart(cv,{type:'line',data:{labels,datasets:ds},options:baseOpts(v=>v+'')});
+}
+function drawLevelsChart(id,cid){
+  destroyChart(cid); const cv=document.getElementById(cid); if(!cv||!cv.clientWidth) return;
+  const f=FAMILIES[id]; const w=histWindowAll(id,252);
+  const colors=[NAVY,MID,LIGHT,PALE];
+  const ds=f.tenors.filter(t=>DATA.byId[t[3]]).map((t,i)=>({
+    label:t[1],data:w.idxs.map(ix=>DATA.byId[t[3]][ix]),
+    borderColor:colors[i%4],backgroundColor:colors[i%4],borderWidth:2,pointRadius:0,
+    stepped:!!f.stepped,tension:f.stepped?0:.25}));
+  charts[cid]=new Chart(cv,{type:'line',data:{labels:w.dates.map(fmtShort),datasets:ds},options:baseOpts(v=>v)});
+}
+function histWindowAll(id,span){ const N=DATA.dateAxis.length; const start=Math.max(0,N-span); const idxs=[]; for(let i=start;i<N;i++) idxs.push(i); return {idxs,dates:idxs.map(i=>DATA.dateAxis[i])}; }
+function drawHistChart(id,cid){
+  destroyChart(cid); const cv=document.getElementById(cid); if(!cv||!cv.clientWidth) return;
+  const w=histWindow(id);
+  charts[cid]=new Chart(cv,{type:'line',data:{labels:w.dates.map(w.dates.length>420?fmtLong:fmtShort),
+    datasets:[{label:w.tenor[1],data:w.vals,borderColor:NAVY,backgroundColor:'rgba(133,183,235,.28)',borderWidth:2,fill:true,pointRadius:0,pointHoverRadius:5,tension:.25}]},
+    options:baseOpts(v=>v,true)});
+}
+function fmtLong(d){ return MON[d.getMonth()]+' '+String(d.getFullYear()).slice(2); }
+function baseOpts(xfmt,zero){
+  return {responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:false},tooltip:{enabled:false,external:extTooltip}},
+    scales:{x:axisOpts(function(v){return this.getLabelForValue(v);}),
+      y:Object.assign(axisOpts(v=>Number(v).toFixed(2)+'%'),zero?{min:0,beginAtZero:true}:{})}};
+}
+
+let _tt=null;
+function extTooltip(ctx){
+  const {chart,tooltip}=ctx;
+  if(!_tt){ _tt=document.createElement('div'); _tt.style.cssText='position:fixed;pointer-events:none;opacity:0;transition:opacity .1s;background:#fff;border:.5px solid #e2e5ea;border-left:3px solid #12284C;border-radius:8px;padding:9px 14px 9px 12px;width:230px;box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:60;font-family:'+FONT; document.body.appendChild(_tt); }
+  if(tooltip.opacity===0){ _tt.style.opacity=0; return; }
+  const title=tooltip.title[0]||'';
+  let html=`<div style="font-size:11px;font-weight:700;color:#12284C;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px">${title}</div>`;
+  tooltip.dataPoints.forEach(dp=>{
+    const col=dp.dataset.borderColor;
+    html+=`<div style="display:flex;gap:7px;align-items:center;padding:2px 0"><span style="width:9px;height:9px;border-radius:2px;background:${col}"></span><span style="font-size:12px;color:#12284C;opacity:.6;flex:1">${dp.dataset.label}</span><span style="font-size:12px;font-weight:700;color:#12284C;font-variant-numeric:tabular-nums">${Number(dp.raw).toFixed(2)}%</span></div>`;
+  });
+  _tt.innerHTML=html; _tt.style.opacity=1;
+  const r=chart.canvas.getBoundingClientRect();
+  let x=r.left+tooltip.caretX+14, y=r.top+tooltip.caretY;
+  if(x+240>window.innerWidth) x=r.left+tooltip.caretX-244;
+  y=Math.max(8,Math.min(window.innerHeight-90,y-40));
+  _tt.style.left=x+'px'; _tt.style.top=y+'px';
+}
+
+/* ============================ ALERTS ============================ */
+function openAlerts(){ state.alertsRead=true; document.getElementById('unread').style.display='none';
+  document.getElementById('overlay').style.display='block'; document.getElementById('drawer').classList.add('open'); renderDrawer(); }
+function closeAlerts(){ document.getElementById('overlay').style.display='none'; document.getElementById('drawer').classList.remove('open'); }
+function renderDrawer(){
+  const feed=[]; for(const id in FAMILIES){ (FAMILIES[id].alerts||[]).forEach(a=>feed.push([FAMILIES[id].name,a])); }
+  let html='<div class="grp">Active rules</div>';
+  feed.forEach(([fam,a])=>{ html+=`<div class="acard"><span class="glyph">▲</span><div><div class="t">${a}</div><div class="m">${fam}</div></div></div>`; });
+  html+='<div style="margin-top:14px;display:flex;gap:8px"><button class="btn primary">New rule</button><button class="btn">Manage thresholds</button></div>';
+  html+='<div class="footnote" style="margin-top:14px">Alert evaluation is stubbed in this build — rules render from each family config. Wire to the observations table to trigger on live thresholds.</div>';
+  document.getElementById('drawerBody').innerHTML=html;
+}
+
+/* ============================ BOOT ============================ */
+async function boot(){
+  renderTabs();
+  document.getElementById('stamp').textContent='· '+fmtRow(new Date());
+  const cnt=Object.values(FAMILIES).reduce((a,f)=>a+(f.alerts?f.alerts.length:0),0);
+  document.getElementById('alertCount').textContent=cnt; document.getElementById('drawerCount').textContent=cnt;
+  let err=null;
+  try{
+    const allIds=[]; for(const id in FAMILIES) FAMILIES[id].tenors.forEach(t=>allIds.push(t[3]));
+    const rows=await pullObs(allIds);
+    DATA=shapeData(rows);
+  }catch(e){ err=e; console.warn('warehouse fetch failed:', e); }
+  const n=DATA.dateAxis.length;
+  document.getElementById('stamp').textContent = n? '· as of '+fmtRow(DATA.dateAxis[n-1]) : '· no data loaded';
+  render();
+  if(err){
+    const b=el(`<div class="card" style="border-color:#D7DBE0"><div class="notice">Couldn't load rates from Supabase in this view: ${err.message}.<br><br>This is almost always the preview sandbox blocking a cross-origin request — <b>open the file directly in a browser or host it (e.g. GitHub Pages) and it will load.</b></div></div>`);
+    document.getElementById('main').prepend(b);
+  }
+}
+window.addEventListener('resize',()=>{ if(state.tab!=='home'){ Object.keys(charts).forEach(destroyChart); render(); }});
+boot();
+</script>
+</body>
+</html>
